@@ -1,6 +1,6 @@
-#include "include/raylib.h"
 #include <math.h>
 #include <stdio.h>
+#include "include/raylib.h"
 
 void printBoard(int board[4][4]);
 void generateTile(int board[4][4]);
@@ -100,6 +100,14 @@ int main(void) {
 				generateTile(boardState);
 				break;
 		}
+		
+		int sum = 0;
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 4; ++j) {
+				sum += boardState[i][j];
+			}
+		}
+		printf("Board sum: %d\n", sum);
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			//Draw Board background
