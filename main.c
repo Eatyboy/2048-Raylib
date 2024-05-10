@@ -1,7 +1,6 @@
-#include "include/raylib.h"
-#include "include/raymath.h"
 #include <math.h>
 #include <stdio.h>
+#include "include/raylib.h"
 
 void printBoard(int board[4][4]);
 void generateTile(int board[4][4]);
@@ -25,7 +24,6 @@ int main(void) {
 	generateTile(boardState);
 	int a = 10;
 	int b = 32;
-	printf("lerp %d and %d with 0.3: %f\n", a, b, Lerp(a, b, 0.3));
 	
 	while (!WindowShouldClose()) {
 		if (isFullBoard(boardState)) gameOver();
@@ -111,6 +109,14 @@ int main(void) {
 				generateTile(boardState);
 				break;
 		}
+		
+		int sum = 0;
+		for (int i = 0; i < 4; ++i) {
+			for (int j = 0; j < 4; ++j) {
+				sum += boardState[i][j];
+			}
+		}
+		printf("Board sum: %d\n", sum);
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			//Draw Board background
