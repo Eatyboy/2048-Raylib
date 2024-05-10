@@ -1,9 +1,12 @@
 #include "include/raylib.h"
+#include "include/raymath.h"
 #include <math.h>
 #include <stdio.h>
 
 void printBoard(int board[4][4]);
 void generateTile(int board[4][4]);
+bool isFullBoard(int board[4][4]);
+void gameOver();
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
@@ -20,8 +23,12 @@ int main(void) {
 
 	generateTile(boardState);
 	generateTile(boardState);
+	int a = 10;
+	int b = 32;
+	printf("lerp %d and %d with 0.3: %f\n", a, b, Lerp(a, b, 0.3));
 	
 	while (!WindowShouldClose()) {
+		if (isFullBoard(boardState)) gameOver();
 		int input = GetKeyPressed();
 		switch (input) {
 			case KEY_UP:
@@ -35,8 +42,9 @@ int main(void) {
 								boardState[i-k-1][j] = value;
 								boardState[i-k][j] = 0;
 							} else if (collidedValue == value) {
-								boardState[i-k-1][j] = value + value;
-								boardState[i-k][j] = 0;
+								printf("collision\n");
+								//boardState[i-k-1][j] = value + value;
+								//boardState[i-k][j] = 0;
 							}
 						}
 					}
@@ -54,8 +62,9 @@ int main(void) {
 								boardState[i+k+1][j] = value;
 								boardState[i+k][j] = 0;
 							} else if (collidedValue == value) {
-								boardState[i+k+1][j] = value + value;
-								boardState[i+k][j] = 0;
+								printf("collision\n");
+								//boardState[i+k+1][j] = value + value;
+								//boardState[i+k][j] = 0;
 							}
 						}
 					}
@@ -72,8 +81,9 @@ int main(void) {
 								boardState[i][j-k-1] = value;
 								boardState[i][j-k] = 0;
 							} else if (collidedValue == value) {
-								boardState[i][j-k-1] = value + value;
-								boardState[i][j-k] = 0;
+								printf("collision\n");
+								//boardState[i][j-k-1] = value + value;
+								//boardState[i][j-k] = 0;
 							}
 						}
 					}
@@ -91,8 +101,9 @@ int main(void) {
 								boardState[i][j+k+1] = value;
 								boardState[i][j+k] = 0;
 							} else if (collidedValue == value) {
-								boardState[i][j+k+1] = value + value;
-								boardState[i][j+k] = 0;
+								printf("collision\n");
+								//boardState[i][j+k+1] = value + value;
+								//boardState[i][j+k] = 0;
 							}
 						}
 					}
@@ -164,4 +175,18 @@ void printBoard(int board[4][4]) {
 		}
 		printf("\n");
 	}
+}
+
+bool isFullBoard(int board[4][4]) {
+	int fullSpaces = 0;
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			if (board[i][j] != 0) fullSpaces++;
+		}
+	}
+	return (fullSpaces == 16);
+}
+
+void gameOver() {
+	CloseWindow();
 }
