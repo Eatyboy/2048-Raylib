@@ -1,5 +1,5 @@
-#include <math.h>
 #include <stdio.h>
+#include <math.h>
 #include "include/raylib.h"
 
 void printBoard(int board[4][4]);
@@ -22,8 +22,6 @@ int main(void) {
 
 	generateTile(boardState);
 	generateTile(boardState);
-	int a = 10;
-	int b = 32;
 	
 	while (!WindowShouldClose()) {
 		if (isFullBoard(boardState)) gameOver();
