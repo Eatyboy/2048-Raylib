@@ -1,9 +1,24 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include "include/raylib.h"
+#include "include/raymath.h"
+
+typedef struct Anim {
+	int dx;
+	int dy;
+	float t;
+} Anim;
+
+typedef struct Tile {
+	int num;
+	Anim *anim;
+} Tile;
 
 void printBoard(int board[4][4]);
-void generateTile(int board[4][4]);
+void printTiles(Tile tiles[4][4]);
+void generateTile(int board[4][4], Tile tiles[4][4]);
 bool isFullBoard(int board[4][4]);
 void gameOver();
 
@@ -12,6 +27,8 @@ int main(void) {
 	const char *screenName = "2048";
 	const int targetFPS = 60;
 
+	const float animDt = 1.0f / 10.0f;
+
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
 
@@ -19,102 +36,160 @@ int main(void) {
 							{0, 0, 0, 0},
 							{0, 0, 0, 0},
 							{0, 0, 0, 0}};
+	Tile tiles[4][4];
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			tiles[i][j] = (Tile){
+				0,
+				NULL
+			};
+		}
+	}
+	int activeAnims = 0;
+	bool shouldSpawnTile = false;
 
-	generateTile(boardState);
-	generateTile(boardState);
-	
+	generateTile(boardState, tiles);
+	generateTile(boardState, tiles);
+
 	while (!WindowShouldClose()) {
 		if (isFullBoard(boardState)) gameOver();
+
 		int input = GetKeyPressed();
 		switch (input) {
 			case KEY_UP:
 				for (int i = 1; i < 4; ++i) {
 					for (int j = 0; j < 4; ++j) {
-						int value = boardState[i][j];
+						int value = tiles[i][j].num;
 						if (value == 0) continue;
-						for (int k = 0; k < i; ++k) {
-							int collidedValue = boardState[i-k-1][j];
+						int delta = 0;
+						for (int k = i-1; k >= 0; k--) {
+							int collidedValue = tiles[k][j].num;
 							if (collidedValue == 0) {
-								boardState[i-k-1][j] = value;
-								boardState[i-k][j] = 0;
-							} else if (collidedValue == value) {
-								printf("collision\n");
-								//boardState[i-k-1][j] = value + value;
-								//boardState[i-k][j] = 0;
+								delta++;
+							} else {
+								break;
 							}
+						}
+
+						if (delta > 0) {
+							Anim *newAnim = malloc(sizeof(Anim));
+							newAnim->dx = 0;
+							newAnim->dy = -delta;
+							newAnim->t = 1;
+							tiles[i][j].anim = newAnim;
+							activeAnims++;
 						}
 					}
 				}
-				generateTile(boardState);
+				shouldSpawnTile = true;
 				break;
 			case KEY_DOWN:
 				for (int i = 2; i >= 0; --i) {
 					for (int j = 0; j < 4; ++j) {
 						int value = boardState[i][j];
 						if (value == 0) continue;
-						for (int k = 0; k < 3-i; ++k) {
-							int collidedValue = boardState[i+k+1][j];
+						int delta = 0;
+						for (int k = i+1; k <= 3; ++k) {
+							int collidedValue = tiles[k][j].num;
 							if (collidedValue == 0) {
-								boardState[i+k+1][j] = value;
-								boardState[i+k][j] = 0;
-							} else if (collidedValue == value) {
-								printf("collision\n");
-								//boardState[i+k+1][j] = value + value;
-								//boardState[i+k][j] = 0;
+								delta++;
+							} else {
+								break;
 							}
+						}
+
+						if (delta > 0) {
+							Anim *newAnim = malloc(sizeof(Anim));
+							newAnim->dx = 0;
+							newAnim->dy = delta;
+							newAnim->t = 1;
+							tiles[i][j].anim = newAnim;
+							activeAnims++;
 						}
 					}
 				}
+				shouldSpawnTile = true;
 				break;
 			case KEY_LEFT:
 				for (int i = 0; i < 4; ++i) {
 					for (int j = 1; j < 4; ++j) {
-						int value = boardState[i][j];
+						int value = tiles[i][j].num;
 						if (value == 0) continue;
-						for (int k = 0; k < j; ++k) {
-							int collidedValue = boardState[i][j-k-1];
+						int delta = 0;
+						for (int k = j-1; k >= 0; k--) {
+							int collidedValue = tiles[i][k].num;
 							if (collidedValue == 0) {
-								boardState[i][j-k-1] = value;
-								boardState[i][j-k] = 0;
-							} else if (collidedValue == value) {
-								printf("collision\n");
-								//boardState[i][j-k-1] = value + value;
-								//boardState[i][j-k] = 0;
+								delta++;
+							} else {
+								break;
 							}
+						}
+
+						if (delta > 0) {
+							Anim *newAnim = malloc(sizeof(Anim));
+							newAnim->dx = -delta;
+							newAnim->dy = 0;
+							newAnim->t = 1;
+							tiles[i][j].anim = newAnim;
+							activeAnims++;
 						}
 					}
 				}
-				generateTile(boardState);
+				shouldSpawnTile = true;
 				break;
 			case KEY_RIGHT:
 				for (int i = 0; i < 4; ++i) {
 					for (int j = 2; j >= 0; --j) {
 						int value = boardState[i][j];
 						if (value == 0) continue;
-						for (int k = 0; k < 3-j; ++k) {
-							int collidedValue = boardState[i][j+k+1];
+						int delta = 0;
+						for (int k = j+1; k <= 3; ++k) {
+							int collidedValue = tiles[i][k].num;
 							if (collidedValue == 0) {
-								boardState[i][j+k+1] = value;
-								boardState[i][j+k] = 0;
-							} else if (collidedValue == value) {
-								printf("collision\n");
-								//boardState[i][j+k+1] = value + value;
-								//boardState[i][j+k] = 0;
+								delta++;
+							} else {
+								break;
 							}
+						}
+
+						if (delta > 0) {
+							Anim *newAnim = malloc(sizeof(Anim));
+							newAnim->dx = delta;
+							newAnim->dy = 0;
+							newAnim->t = 1;
+							tiles[i][j].anim = newAnim;
+							activeAnims++;
 						}
 					}
 				}
-				generateTile(boardState);
+				shouldSpawnTile = true;
 				break;
 		}
-		
-		int sum = 0;
-		for (int i = 0; i < 4; ++i) {
-			for (int j = 0; j < 4; ++j) {
-				sum += boardState[i][j];
+
+		if (activeAnims > 0) {
+			for (int i = 0; i < 4; ++i) {
+				for (int j = 0; j < 4; ++j) {
+					Anim *anim = tiles[i][j].anim;
+					if (anim == NULL) continue;
+					if (!FloatEquals(anim->t, 0.0f)) {
+						anim->t = fmaxf(anim->t - animDt, 0.0f);
+					} else {
+						Tile temp = tiles[i][j];
+						tiles[i][j] = tiles[i + anim->dy][j + anim->dx];
+						tiles[i + anim->dy][j + anim->dx] = temp;
+						tiles[i + anim->dy][j + anim->dx].anim = NULL;
+						free(anim);
+						activeAnims--;
+					}
+				}
 			}
 		}
-		printf("Board sum: %d\n", sum);
+
+		if (shouldSpawnTile && activeAnims == 0) {
+			generateTile(boardState, tiles);
+			shouldSpawnTile = false;
+		}
+
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
 			//Draw Board background
@@ -136,23 +211,33 @@ int main(void) {
 					);
 				}
 			}
+
+			// Draw tiles
 			for (int i = 0; i < 4; ++i) {
 				for (int j = 0; j < 4; ++j) {
-					int value = boardState[i][j];
-					if (value == 0) continue;
+					Tile tile = tiles[i][j];
+
+					if (tile.num == 0) continue;
+
+					float tileX = (tile.anim != NULL) 
+						? Lerp(j, j + tile.anim->dx, 1 - tile.anim->t)
+						: j;
+					float tileY = (tile.anim != NULL)
+						? Lerp(i, i + tile.anim->dy, 1 - tile.anim->t)
+						: i;
 
 					DrawRectangleRounded(
 						(Rectangle){
-							boardPos.x + innerDim * j + 10*(j+1), 
-							boardPos.y + innerDim * i + 10*(i+1),
+							boardPos.x + thick + tileX * (innerDim + thick),
+							boardPos.y + thick + tileY * (innerDim + thick),
 							innerDim, 
 							innerDim
 						},
 						0.05f, 0, YELLOW
 					);
-					DrawText(TextFormat("%d", value), 
-						boardPos.x + innerDim * j + 10*(j+1) + 40, 
-						boardPos.y + innerDim * i + 10*(i+1) + 20,
+					DrawText(TextFormat("%d", tile.num), 
+						boardPos.x + 40 + tileX * (innerDim + thick),
+						boardPos.y + 20 + tileY * (innerDim + thick),
 						100, BLACK);
 				}
 			}
@@ -162,7 +247,7 @@ int main(void) {
 	return 0;
 }
 
-void generateTile(int board[4][4]) {
+void generateTile(int board[4][4], Tile tiles[4][4]) {
 	int possibleNums[] = {2,4};
 	int newIndex;
 	do {
@@ -170,12 +255,25 @@ void generateTile(int board[4][4]) {
 	} while (board[newIndex % 4][newIndex / 4] != 0);
 	int newNum = possibleNums[GetRandomValue(0,1)];
 	board[newIndex % 4][newIndex / 4] = newNum;
+	tiles[newIndex % 4][newIndex / 4] = (Tile){
+		newNum,
+		NULL
+	};
 }
 
 void printBoard(int board[4][4]) {
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
 			printf("%d ", board[i][j]);
+		}
+		printf("\n");
+	}
+}
+
+void printTiles(Tile tiles[4][4]) {
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			printf("%d ", tiles[i][j].num);
 		}
 		printf("\n");
 	}
@@ -192,5 +290,6 @@ bool isFullBoard(int board[4][4]) {
 }
 
 void gameOver() {
+	printf("you lose");
 	CloseWindow();
 }
