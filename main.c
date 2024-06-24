@@ -10,6 +10,8 @@
 #define BWIDTH 4
 #define BHEIGHT 4
 
+#define ANIMDT (0.1f)
+
 typedef struct Anim {
 	int dx;
 	int dy;
@@ -45,18 +47,19 @@ void restartGame(Tile board[BHEIGHT][BWIDTH],
 void printTiles(Tile tiles[BHEIGHT][BWIDTH]);
 void generateTile(Tile tiles[BHEIGHT][BWIDTH]);
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
-void endAnims(Tile tiles[BHEIGHT][BWIDTH]);
+void endAnims(Tile tiles[BHEIGHT][BWIDTH],
+				Collision collisions[BHEIGHT * BWIDTH],
+				int *animCount,
+				int *collisionCount);
+void updateAnims(Tile tiles[BHEIGHT][BWIDTH],
+				Collision collisions[BHEIGHT * BWIDTH],
+				int *animCount,
+				int *collisionCount);
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
 	const char *screenName = "2048";
 	const int targetFPS = 60;
-
-	#if debug
-	const float animDt = 1.0f / 100.0f;
-	#else
-	const float animDt = 1.0f / 10.0f;
-	#endif
 
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
@@ -93,10 +96,13 @@ int main(void) {
 			restartGame(tiles, collisions, &activeAnims, &activeCollisions, &shouldSpawnTile);
 			printf("Restarted game\n");
 		}
+		if (input == KEY_I) {
+			printf("Active anims: %d, Active Collisions: %d, shouldSpawnTile: %s\n", activeAnims, activeCollisions, shouldSpawnTile ? "true" : "false");
+		}
 		#endif
 		switch (input) {
 			case KEY_UP:
-				endAnims(tiles);
+				endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				for (int i = 1; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
 						int value = tiles[i][j].num;
@@ -104,25 +110,17 @@ int main(void) {
 						if (value == 0) continue;
 
 						int delta = 0;
-						bool willCollide = false;
+						bool willCombine = false;
 
 						for (int k = i-1; k >= 0; k--) {
 							int collidedValue = tiles[k][j].num;
 
-							if (collidedValue == value) {
+							if (collidedValue == 0) {
 								delta++;
-								willCollide = true;
-								break;
-							} else if (collidedValue != 0) {
-								for (int l = k; l >= 0; l--) {
-									if (tiles[l][j].num == 0) {
-										delta++;
-									}
-								}
-								delta--;
+							} else if (collidedValue == value) {
+								delta++;
+								willCombine = true;
 							}
-
-							delta++;
 						}
 
 						if (delta > 0) {
@@ -135,7 +133,7 @@ int main(void) {
 							shouldSpawnTile = true;
 						}
 
-						if (willCollide) {
+						if (willCombine) {
 							collisions[activeCollisions] = (Collision){j, i - delta, value + value};
 							activeCollisions++;
 						}
@@ -143,7 +141,7 @@ int main(void) {
 				}
 				break;
 			case KEY_DOWN:
-				endAnims(tiles);
+				endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				for (int i = 2; i >= 0; --i) {
 					for (int j = 0; j < 4; ++j) {
 						int value = tiles[i][j].num;
@@ -151,25 +149,17 @@ int main(void) {
 						if (value == 0) continue;
 
 						int delta = 0;
-						bool willCollide = false;
+						bool willCombine = false;
 
 						for (int k = i+1; k <= 3; ++k) {
 							int collidedValue = tiles[k][j].num;
 
-							if (collidedValue == value) {
+							if (collidedValue == 0) {
 								delta++;
-								willCollide = true;
-								break;
-							} else if (collidedValue != 0) {
-								for (int l = k; l <= 3; l++) {
-									if (tiles[l][j].num == 0) {
-										delta++;
-									}
-								}
-								delta--;
+							} else if (collidedValue == value) {
+								delta++;
+								willCombine = true;
 							}
-
-							delta++;
 						}
 
 						if (delta > 0) {
@@ -182,7 +172,7 @@ int main(void) {
 							shouldSpawnTile = true;
 						}
 
-						if (willCollide) {
+						if (willCombine) {
 							collisions[activeCollisions] = (Collision){j, i + delta, value + value};
 							activeCollisions++;
 						}
@@ -190,7 +180,7 @@ int main(void) {
 				}
 				break;
 			case KEY_LEFT:
-				endAnims(tiles);
+				endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				for (int j = 1; j < 4; ++j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -198,25 +188,17 @@ int main(void) {
 						if (value == 0) continue;
 
 						int delta = 0;
-						bool willCollide = false;
+						bool willCombine = false;
 
 						for (int k = j-1; k >= 0; k--) {
 							int collidedValue = tiles[i][k].num;
 
-							if (collidedValue == value) {
+							if (collidedValue == 0) {
 								delta++;
-								willCollide = true;
-								break;
-							} else if (collidedValue != 0) {
-								for (int l = k; l >= 0; l--) {
-									if (tiles[i][l].num == 0) {
-										delta++;
-									}
-								}
-								delta--;
+							} else if (collidedValue == value) {
+								delta++;
+								willCombine = true;
 							}
-
-							delta++;
 						}
 
 						if (delta > 0) {
@@ -229,7 +211,7 @@ int main(void) {
 							shouldSpawnTile = true;
 						}
 
-						if (willCollide) {
+						if (willCombine) {
 							collisions[activeCollisions] = (Collision){j - delta, i, value + value};
 							activeCollisions++;
 						}
@@ -237,7 +219,7 @@ int main(void) {
 				}
 				break;
 			case KEY_RIGHT:
-				endAnims(tiles);
+				endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				for (int j = 2; j >= 0; --j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -245,25 +227,17 @@ int main(void) {
 						if (value == 0) continue;
 
 						int delta = 0;
-						bool willCollide = false;
+						bool willCombine = false;
 
 						for (int k = j+1; k <= 3; ++k) {
 							int collidedValue = tiles[i][k].num;
 
-							if (collidedValue == value) {
+							if (collidedValue == 0) {
 								delta++;
-								willCollide = true;
-								break;
-							} else if (collidedValue != 0) {
-								for (int l = k; l <= 3; l++) {
-									if (tiles[i][l].num == 0) {
-										delta++;
-									}
-								}
-								delta--;
+							} else if (collidedValue == value) {
+								delta++;
+								willCombine = true;
 							}
-
-							delta++;
 						}
 
 						if (delta > 0) {
@@ -276,7 +250,7 @@ int main(void) {
 							shouldSpawnTile = true;
 						}
 
-						if (willCollide) {
+						if (willCombine) {
 							collisions[activeCollisions] = (Collision){j + delta, i, value + value};
 							activeCollisions++;
 						}
@@ -285,60 +259,7 @@ int main(void) {
 				break;
 		}
 
-		if (activeAnims > 0) {
-			for (int i = 0; i < BHEIGHT; ++i) {
-				for (int j = 0; j < BWIDTH; ++j) {
-					Anim *anim = tiles[i][j].anim;
-					if (anim == NULL) continue;
-					if (!FloatEquals(anim->t, 0.0f)) {
-						anim->t = fmaxf(anim->t - animDt, 0.0f);
-					} else {
-						int newX = j + anim->dx;
-						int newY = i + anim->dy;
-						bool isCollision = false;
-
-						for (int k = 0; k < activeCollisions; ++k) {
-							Collision collision = collisions[k];
-							if (collision.x == newX && collision.y == newY) {
-								isCollision = true;
-								for (int l = k; l < activeCollisions - 1; ++l) {
-									collisions[l] = collisions[l+1];
-								}
-								activeCollisions--;
-								collisions[activeCollisions] = NULL_COLLISION;
-								break;
-							}
-						}
-
-						if (isCollision) {
-							#if debug
-							printf("Collisions: ");
-							#endif
-							for (size_t i = 0; i < activeCollisions; i++) {
-								Collision c = collisions[i];
-								printf("(%d, %d)", c.x, c.y);
-							}
-							#if debug
-							printf("\ncollision at %d, %d\n", newX, newY);
-							#endif
-							tiles[newY][newX].num *= 2;
-							tiles[i][j].num = 0;
-							tiles[i][j].anim = NULL;
-						} else {
-							tiles[i][j].anim = NULL;
-							tiles[newY][newX] = tiles[i][j];
-							tiles[i][j].num = 0;
-							#if debug
-							printf("Tile at (%d, %d) moved to (%d, %d)\n", j, i, newX, newY);
-							#endif
-						}
-
-						free(anim);
-						activeAnims--;
-					}
-				}
-			}
-		}
+		updateAnims(tiles, collisions, &activeAnims, &activeCollisions);
 
 		if (shouldSpawnTile && activeAnims == 0) {
 			generateTile(tiles);
@@ -440,13 +361,20 @@ void gameOver() {
 	CloseWindow();
 }
 
-void endAnims(Tile tiles[BHEIGHT][BWIDTH]) {
+void endAnims(Tile tiles[BHEIGHT][BWIDTH],
+				Collision collisions[BHEIGHT * BWIDTH],
+				int *animCount,
+				int *collisionCount) {
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
 			if (tiles[i][j].anim == NULL) continue;
 			tiles[i][j].anim->t = 0.0f;
+			Anim *a = tiles[i][j].anim;
+			printf("ended anim at (%d, %d) going to (%d, %d)\n", j, i, j + a->dx, i + a-> dy);
 		}
 	}
+
+	updateAnims(tiles, collisions, animCount, collisionCount);
 }
 
 void restartGame(Tile board[BHEIGHT][BWIDTH], 
@@ -471,4 +399,64 @@ void restartGame(Tile board[BHEIGHT][BWIDTH],
 
 	generateTile(board);
 	generateTile(board);
+}
+
+void updateAnims(Tile tiles[BHEIGHT][BWIDTH],
+				Collision collisions[BHEIGHT * BWIDTH],
+				int *animCount,
+				int *collisionCount) {
+	if (*animCount <= 0) return;
+
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			Anim *anim = tiles[i][j].anim;
+			if (anim == NULL) continue;
+			if (!FloatEquals(anim->t, 0.0f)) {
+				anim->t = fmaxf(anim->t - ANIMDT, 0.0f);
+			} else {
+				int newX = j + anim->dx;
+				int newY = i + anim->dy;
+				bool isCollision = false;
+
+				for (int k = 0; k < *collisionCount; ++k) {
+					Collision collision = collisions[k];
+					if (collision.x == newX && collision.y == newY) {
+						isCollision = true;
+						for (int l = k; l < *collisionCount - 1; ++l) {
+							collisions[l] = collisions[l+1];
+						}
+						(*collisionCount)--;
+						collisions[*collisionCount] = NULL_COLLISION;
+						break;
+					}
+				}
+
+				if (isCollision) {
+					#if debug
+					printf("Collisions: ");
+					#endif
+					for (size_t i = 0; i < *collisionCount; i++) {
+						Collision c = collisions[i];
+						printf("(%d, %d)", c.x, c.y);
+					}
+					#if debug
+					printf("\ncollision at %d, %d\n", newX, newY);
+					#endif
+					tiles[newY][newX].num *= 2;
+					tiles[i][j].num = 0;
+					tiles[i][j].anim = NULL;
+				} else {
+					tiles[i][j].anim = NULL;
+					tiles[newY][newX] = tiles[i][j];
+					tiles[i][j].num = 0;
+					#if debug
+					printf("Tile at (%d, %d) moved to (%d, %d)\n", j, i, newX, newY);
+					#endif
+				}
+
+				free(anim);
+				(*animCount)--;
+			}
+		}
+	}
 }
