@@ -98,6 +98,15 @@ int main(void) {
 		}
 		if (input == KEY_I) {
 			printf("Active anims: %d, Active Collisions: %d, shouldSpawnTile: %s\n", activeAnims, activeCollisions, shouldSpawnTile ? "true" : "false");
+			if (activeAnims > 0) {
+				for (int i = 0; i < BHEIGHT; ++i) {
+					for (int j = 0; j < BWIDTH; ++j) {
+						Anim *a = tiles[i][j].anim;
+						if (a == NULL) printf("Anim at (%d, %d) is null\n", j, i);
+						else printf("Anim at (%d, %d) has dx: %d, dy: %d, t: %f\n", j, i, a->dx, a->dy, a->t);
+					}
+				}
+			}
 		}
 		#endif
 		switch (input) {
@@ -365,6 +374,7 @@ void endAnims(Tile tiles[BHEIGHT][BWIDTH],
 				Collision collisions[BHEIGHT * BWIDTH],
 				int *animCount,
 				int *collisionCount) {
+	printf("Active anims before: %d\n", *animCount);
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
 			if (tiles[i][j].anim == NULL) continue;
@@ -375,6 +385,7 @@ void endAnims(Tile tiles[BHEIGHT][BWIDTH],
 	}
 
 	updateAnims(tiles, collisions, animCount, collisionCount);
+	printf("Active anims after: %d\n", *animCount);
 }
 
 void restartGame(Tile board[BHEIGHT][BWIDTH], 
