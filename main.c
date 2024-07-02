@@ -10,7 +10,7 @@
 #define BWIDTH 4
 #define BHEIGHT 4
 
-#define ANIMDT (0.01f)
+#define ANIMDT (0.05f)
 
 typedef struct Anim {
 	int dx;
@@ -23,14 +23,6 @@ typedef struct Tile {
 	Anim *anim;
 } Tile;
 
-typedef struct Collision {
-	int x;
-	int y;
-	int value;
-} Collision;
-
-#define NULL_COLLISION (Collision){-1, -1, 0}
-
 Color numColors[] = {
 	(Color){220, 150, 150, 255},
 	(Color){220, 125, 125, 255},
@@ -40,26 +32,24 @@ Color numColors[] = {
 
 void gameOver();
 void restartGame(Tile board[BHEIGHT][BWIDTH], 
-				Collision collisions[BHEIGHT * BWIDTH],
+				int newState[BHEIGHT][BWIDTH],
 				int *animCount,
-				int *collisionCount,
 				bool *spawningTiles);
+void printBoard(Tile tiles[BHEIGHT][BWIDTH]);
 void printTiles(Tile tiles[BHEIGHT][BWIDTH]);
-void generateTile(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
+int generateTile(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount);
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
-void endAnims(Tile tiles[BHEIGHT][BWIDTH],
-				Collision collisions[BHEIGHT * BWIDTH],
-				int *animCount,
-				int *collisionCount);
-void updateAnims(Tile tiles[BHEIGHT][BWIDTH],
-				Collision collisions[BHEIGHT * BWIDTH],
-				int *animCount,
-				int *collisionCount);
+void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
+void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
 	const char *screenName = "2048";
 	const int targetFPS = 60;
+
+	#if debug
+	int boardCount = 0;
+	#endif
 
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
@@ -73,16 +63,24 @@ int main(void) {
 			};
 		}
 	}
+	int newState[4][4];
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			newState[i][j] = 0;
+		}
+	}
 	int activeAnims = 0;
 	bool shouldSpawnTile = false;
-	Collision collisions[BWIDTH * BHEIGHT];
-	for (int i = 0; i < BWIDTH * BHEIGHT; ++i) {
-		collisions[i] = NULL_COLLISION;
-	}
-	int activeCollisions = 0;
 
-	generateTile(tiles, &activeAnims);
-	generateTile(tiles, &activeAnims);
+	#if debug
+	boardCount +=
+	#endif
+	generateTile(tiles, newState, &activeAnims);
+	#if debug
+	boardCount +=
+	#endif
+	generateTile(tiles, newState, &activeAnims);
+
 
 	while (!WindowShouldClose()) {
 		if (isFullBoard(tiles)) gameOver();
@@ -90,14 +88,17 @@ int main(void) {
 		int input = GetKeyPressed();
 		#if debug
 		if (input == KEY_SPACE) {
+			printBoard(tiles);
+		}
+		if (input == KEY_B) {
 			printTiles(tiles);
 		}
 		if (input == KEY_R) {
-			restartGame(tiles, collisions, &activeAnims, &activeCollisions, &shouldSpawnTile);
+			restartGame(tiles, newState, &activeAnims, &shouldSpawnTile);
 			printf("Restarted game\n");
 		}
 		if (input == KEY_I) {
-			printf("Active anims: %d, Active Collisions: %d, shouldSpawnTile: %s\n", activeAnims, activeCollisions, shouldSpawnTile ? "true" : "false");
+			printf("Active anims: %d, shouldSpawnTile: %s\n", activeAnims, shouldSpawnTile ? "true" : "false");
 			if (activeAnims > 0) {
 				for (int i = 0; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
@@ -108,10 +109,12 @@ int main(void) {
 				}
 			}
 		}
+		int prevBoardCount = boardCount;
 		#endif
 		switch (input) {
 			case KEY_UP:
-				endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				if (activeAnims > 0) break;
 				for (int i = 1; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
 						int value = tiles[i][j].num;
@@ -132,36 +135,33 @@ int main(void) {
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
-							} else if (nextNum == collidedValue) {
-								delta++;
-								nextNum = -1;
-							}
-
-							if (collidedValue == value) {
+							} 
+							if (nextNum == value) {
 								delta++;
 								willCombine = true;
 							}
 						}
 
 						if (delta > 0) {
+							newState[i][j] = 0;
+							newState[i - delta][j] = willCombine ? value + value : value;
+
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = 0;
 							newAnim->dy = -delta;
 							newAnim->t = 1;
+
 							tiles[i][j].anim = newAnim;
 							activeAnims++;
-							shouldSpawnTile = true;
-						}
 
-						if (willCombine) {
-							collisions[activeCollisions] = (Collision){j, i - delta, value + value};
-							activeCollisions++;
+							shouldSpawnTile = true;
 						}
 					}
 				}
 				break;
 			case KEY_DOWN:
-				endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				if (activeAnims > 0) break;
 				for (int i = 2; i >= 0; --i) {
 					for (int j = 0; j < 4; ++j) {
 						int value = tiles[i][j].num;
@@ -182,36 +182,33 @@ int main(void) {
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
-							} else if (nextNum == collidedValue) {
-								delta++;
-								nextNum = -1;
-							}
-
-							if (collidedValue == value) {
+							} 
+							if (nextNum == value) {
 								delta++;
 								willCombine = true;
 							}
 						}
 
 						if (delta > 0) {
+							newState[i][j] = 0;
+							newState[i + delta][j] = willCombine ? value + value : value;
+
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = 0;
 							newAnim->dy = delta;
 							newAnim->t = 1;
+
 							tiles[i][j].anim = newAnim;
 							activeAnims++;
-							shouldSpawnTile = true;
-						}
 
-						if (willCombine) {
-							collisions[activeCollisions] = (Collision){j, i + delta, value + value};
-							activeCollisions++;
+							shouldSpawnTile = true;
 						}
 					}
 				}
 				break;
 			case KEY_LEFT:
-				endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				if (activeAnims > 0) break;
 				for (int j = 1; j < 4; ++j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -232,36 +229,33 @@ int main(void) {
 
 							if (nextNum == 0 ) {
 								nextNum = collidedValue;
-							} else if (nextNum == collidedValue) {
-								delta++;
-								nextNum = -1;
-							}
-
-							if (collidedValue == value) {
+							} 
+							if (nextNum == value) {
 								delta++;
 								willCombine = true;
 							}
 						}
 
 						if (delta > 0) {
+							newState[i][j] = 0;
+							newState[i][j - delta] = willCombine ? value + value : value;
+
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = -delta;
 							newAnim->dy = 0;
 							newAnim->t = 1;
+
 							tiles[i][j].anim = newAnim;
 							activeAnims++;
-							shouldSpawnTile = true;
-						}
 
-						if (willCombine) {
-							collisions[activeCollisions] = (Collision){j - delta, i, value + value};
-							activeCollisions++;
+							shouldSpawnTile = true;
 						}
 					}
 				}
 				break;
 			case KEY_RIGHT:
-				endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
+				if (activeAnims > 0) break;
 				for (int j = 2; j >= 0; --j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -282,42 +276,55 @@ int main(void) {
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
-							} else if (nextNum == collidedValue) {
-								delta++;
-								nextNum = -1;
 							}
-
-							if (collidedValue == value) {
+							if (nextNum == collidedValue) {
 								delta++;
 								willCombine = true;
 							}
 						}
 
 						if (delta > 0) {
+							newState[i][j] = 0;
+							newState[i][j + delta] = willCombine ? value + value : value;
+
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = delta;
 							newAnim->dy = 0;
 							newAnim->t = 1;
+
 							tiles[i][j].anim = newAnim;
 							activeAnims++;
-							shouldSpawnTile = true;
-						}
 
-						if (willCombine) {
-							collisions[activeCollisions] = (Collision){j + delta, i, value + value};
-							activeCollisions++;
+							shouldSpawnTile = true;
 						}
 					}
 				}
 				break;
 		}
 
-		updateAnims(tiles, collisions, &activeAnims, &activeCollisions);
+		updateAnims(tiles, &activeAnims);
 
-		if (shouldSpawnTile && activeAnims == 0) {
-			generateTile(tiles, &activeAnims);
-			shouldSpawnTile = false;
+		if (activeAnims == 0) {
+			for (int i = 0; i < BHEIGHT; ++i) {
+				for (int j = 0; j < BWIDTH; ++j) {
+					tiles[i][j].num = newState[i][j];
+				}
+			}
+
+			if (shouldSpawnTile) {
+				#if debug
+				boardCount +=
+				#endif
+				generateTile(tiles, newState, &activeAnims);
+				shouldSpawnTile = false;
+			}
 		}
+
+		#if debug
+		if (prevBoardCount > boardCount) {
+			printf("ERROR: board decreased in count\n");
+		}
+		#endif
 
 		BeginDrawing();
 			ClearBackground(RAYWHITE);
@@ -388,7 +395,7 @@ int main(void) {
 	return 0;
 }
 
-void generateTile(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
+int generateTile(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount) {
 	int possibleNums[] = {2,4};
 	int newIndex;
 	do {
@@ -400,14 +407,15 @@ void generateTile(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 	newAnim->dx = 0;
 	newAnim->dy = 0;
 	newAnim->t = 1;
-	tiles[newIndex % BHEIGHT][newIndex / BWIDTH] = (Tile){
-		newNum,
-		newAnim
-	};
+	tiles[newIndex % BHEIGHT][newIndex / BWIDTH].anim = newAnim;
+	tiles[newIndex % BHEIGHT][newIndex / BWIDTH].num = newNum;
+	newState[newIndex % BHEIGHT][newIndex / BWIDTH] = newNum;
 	(*animCount)++;
+
+	return newNum;
 }
 
-void printTiles(Tile tiles[BHEIGHT][BWIDTH]) {
+void printBoard(Tile tiles[BHEIGHT][BWIDTH]) {
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
 			printf("%d ", tiles[i][j].num);
@@ -415,6 +423,20 @@ void printTiles(Tile tiles[BHEIGHT][BWIDTH]) {
 		printf("\n");
 	}
 	printf("---------\n");
+}
+
+void printTiles(Tile tiles[BHEIGHT][BWIDTH]) {
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			printf("num: %d ", tiles[i][j].num);
+			if (tiles[i][j].anim != NULL) {
+				Anim *a = tiles[i][j].anim;
+				printf("dx: %d, dy: %d, t: %f ", a->dx, a->dy, a->t);
+			}
+		}
+		printf("\n");
+	}
+	printf("-----------------\n");
 }
 
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]) {
@@ -432,10 +454,7 @@ void gameOver() {
 	CloseWindow();
 }
 
-void endAnims(Tile tiles[BHEIGHT][BWIDTH],
-				Collision collisions[BHEIGHT * BWIDTH],
-				int *animCount,
-				int *collisionCount) {
+void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 	printf("Active anims before: %d\n", *animCount);
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
@@ -446,97 +465,40 @@ void endAnims(Tile tiles[BHEIGHT][BWIDTH],
 		}
 	}
 
-	updateAnims(tiles, collisions, animCount, collisionCount);
+	updateAnims(tiles, animCount);
 	printf("Active anims after: %d\n", *animCount);
 }
 
-void restartGame(Tile board[BHEIGHT][BWIDTH], 
-				Collision collisions[BHEIGHT * BWIDTH],
-				int *animCount,
-				int *collisionCount,
-				bool *spawningTiles) {
+void restartGame(Tile board[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
 			board[i][j].num = 0;
 			board[i][j].anim = NULL;
+			newState[i][j] = 0;
 		}
 	}
 
-	for (int i = 0; i < BHEIGHT * BWIDTH; ++i) {
-		collisions[i] = NULL_COLLISION;
-	}
+	*animCount = 0;
+	*spawningTiles = false;
 
-	animCount = 0;
-	collisionCount = 0;
-	spawningTiles = false;
-
-	generateTile(board, animCount);
-	generateTile(board, animCount);
+	generateTile(board, newState, animCount);
+	generateTile(board, newState, animCount);
 }
 
-void updateAnims(Tile tiles[BHEIGHT][BWIDTH],
-				Collision collisions[BHEIGHT * BWIDTH],
-				int *animCount,
-				int *collisionCount) {
+void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 	if (*animCount <= 0) return;
 
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
 			Anim *anim = tiles[i][j].anim;
 			if (anim == NULL) continue;
-			if (!FloatEquals(anim->t, 0.0f)) {
-				anim->t = fmaxf(anim->t - ANIMDT, 0.0f);
-			} else {
-				if (anim->dx == 0 && anim->dy == 0) {
-					tiles[i][j].anim = NULL;
-					#if debug
-					printf("Tile at (%d, %d) spawned\n", j, i);
-					#endif
-				} else {
-					int newX = j + anim->dx;
-					int newY = i + anim->dy;
-					bool isCollision = false;
 
-					for (int k = 0; k < *collisionCount; ++k) {
-						Collision collision = collisions[k];
-						if (collision.x == newX && collision.y == newY) {
-							isCollision = true;
-							for (int l = k; l < *collisionCount - 1; ++l) {
-								collisions[l] = collisions[l+1];
-							}
-							(*collisionCount)--;
-							collisions[*collisionCount] = NULL_COLLISION;
-							break;
-						}
-					}
+			anim->t -= ANIMDT;
+			if (anim->t > 0.0f) continue;
 
-					if (isCollision) {
-						#if debug
-						printf("Collisions: ");
-						#endif
-						for (size_t i = 0; i < *collisionCount; i++) {
-							Collision c = collisions[i];
-							printf("(%d, %d)", c.x, c.y);
-						}
-						#if debug
-						printf("\ncollision at %d, %d\n", newX, newY);
-						#endif
-						tiles[newY][newX].num *= 2;
-						tiles[i][j].num = 0;
-						tiles[i][j].anim = NULL;
-					} else {
-						tiles[i][j].anim = NULL;
-						tiles[newY][newX] = tiles[i][j];
-						tiles[i][j].num = 0;
-						#if debug
-						printf("Tile at (%d, %d) moved to (%d, %d)\n", j, i, newX, newY);
-						#endif
-					}
-				}
-
-				free(anim);
-				(*animCount)--;
-			}
+			tiles[i][j].anim = NULL;
+			free(anim);
+			(*animCount)--;
 		}
 	}
 }
