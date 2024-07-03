@@ -1,6 +1,7 @@
 #include "include/raylib.h"
 #include "include/raymath.h"
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -41,6 +42,7 @@ int generateTile(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
 void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
+bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles);
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
@@ -501,4 +503,8 @@ void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 			(*animCount)--;
 		}
 	}
+}
+
+bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
+	return true;
 }
