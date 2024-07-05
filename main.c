@@ -11,7 +11,7 @@
 #define BWIDTH 4
 #define BHEIGHT 4
 
-#define ANIMDT (0.05f)
+#define ANIMDT (0.1f)
 
 typedef struct Anim {
 	int dx;
@@ -23,13 +23,6 @@ typedef struct Tile {
 	int num;
 	Anim *anim;
 } Tile;
-
-Color numColors[] = {
-	(Color){220, 150, 150, 255},
-	(Color){220, 125, 125, 255},
-	(Color){220, 100, 100, 255},
-	(Color){235, 75, 75, 255}
-};
 
 void gameOver();
 void restartGame(Tile board[BHEIGHT][BWIDTH], 
@@ -43,6 +36,7 @@ bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
 void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles);
+int digitCount(int n);
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
@@ -55,6 +49,26 @@ int main(void) {
 
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
+
+	Color numColors[] = {
+		(Color){245, 203, 192, 255},
+		(Color){240, 152, 129, 255},
+		(Color){240, 104, 90, 255},
+		(Color){201, 32, 32, 255},
+		(Color){219, 149, 15, 255},
+		(Color){219, 199, 30, 255},
+		(Color){106, 201, 34, 255},
+		(Color){9, 156, 98, 255},
+		(Color){33, 189, 201, 255},
+		(Color){28, 76, 9, 255},
+		(Color){117, 46, 161, 255},
+		(Color){115, 3, 112, 255},
+		(Color){158, 26, 91, 255},
+		(Color){97, 97, 97, 255},
+		(Color){59, 59, 59, 255},
+		(Color){26, 26, 26, 255}
+	};
+
 
 	Tile tiles[BHEIGHT][BWIDTH];
 	for (int i = 0; i < BHEIGHT; ++i) {
@@ -82,7 +96,6 @@ int main(void) {
 	boardCount +=
 	#endif
 	generateTile(tiles, newState, &activeAnims);
-
 
 	while (!WindowShouldClose()) {
 		if (isFullBoard(tiles)) gameOver();
@@ -138,7 +151,7 @@ int main(void) {
 							if (nextNum == 0) {
 								nextNum = collidedValue;
 							} 
-							if (nextNum == value) {
+							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
 							}
@@ -185,7 +198,7 @@ int main(void) {
 							if (nextNum == 0) {
 								nextNum = collidedValue;
 							} 
-							if (nextNum == value) {
+							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
 							}
@@ -232,7 +245,7 @@ int main(void) {
 							if (nextNum == 0 ) {
 								nextNum = collidedValue;
 							} 
-							if (nextNum == value) {
+							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
 							}
@@ -279,7 +292,7 @@ int main(void) {
 							if (nextNum == 0) {
 								nextNum = collidedValue;
 							}
-							if (nextNum == collidedValue) {
+							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
 							}
@@ -354,8 +367,9 @@ int main(void) {
 			for (int i = 0; i < BHEIGHT; ++i) {
 				for (int j = 0; j < BWIDTH; ++j) {
 					Tile tile = tiles[i][j];
+					int num = tile.num;
 
-					if (tile.num == 0) continue;
+					if (num == 0) continue;
 
 					float tileX = (tile.anim != NULL) 
 						? Lerp(j, j + tile.anim->dx, 1 - tile.anim->t)
@@ -381,10 +395,12 @@ int main(void) {
 							innerDim * size, 
 							innerDim * size
 						},
-						0.05f, 0, numColors[(int)log2(tile.num) - 1]
+						0.05f, 0, numColors[(int)log2(num) - 1]
 					);
+
+					int numLen = digitCount(num);
 					if (FloatEquals(size, 1.0f)) {
-						DrawText(TextFormat("%d", tile.num), 
+						DrawText(TextFormat("%d", num), 
 							boardPos.x + 50 + tileX * (innerDim + thick),
 							boardPos.y + 30 + tileY * (innerDim + thick),
 							80, BLACK);
@@ -507,4 +523,13 @@ void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 
 bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
 	return true;
+}
+
+int digitCount(int n) {
+	int count = 0;
+	while (n > 0) {
+		n /= 10;
+		count++;
+	}
+	return count;
 }
