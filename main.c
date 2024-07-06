@@ -8,10 +8,18 @@
 
 #define debug true
 
+#define FONTSIZE 86
+
 #define BWIDTH 4
 #define BHEIGHT 4
+#define MAX_MERGES (BHEIGHT * BWIDTH / 2)
 
 #define ANIMDT (0.1f)
+
+typedef struct Pos {
+	int x;
+	int y;
+} Pos;
 
 typedef struct Anim {
 	int dx;
@@ -50,6 +58,8 @@ int main(void) {
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
 
+	Font numFont = LoadFontEx("res/AzeretMono-Bold.ttf", FONTSIZE, 0, 250);
+
 	Color numColors[] = {
 		(Color){245, 203, 192, 255},
 		(Color){240, 152, 129, 255},
@@ -69,7 +79,6 @@ int main(void) {
 		(Color){26, 26, 26, 255}
 	};
 
-
 	Tile tiles[BHEIGHT][BWIDTH];
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
@@ -87,7 +96,13 @@ int main(void) {
 	}
 	int activeAnims = 0;
 	bool shouldSpawnTile = false;
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			newState[i][j] = (int)powf(2, 4 * i + j);
+		}
+	}
 
+/*
 	#if debug
 	boardCount +=
 	#endif
@@ -96,9 +111,10 @@ int main(void) {
 	boardCount +=
 	#endif
 	generateTile(tiles, newState, &activeAnims);
+*/
 
 	while (!WindowShouldClose()) {
-		if (isFullBoard(tiles)) gameOver();
+//		if (isFullBoard(tiles)) gameOver();
 
 		int input = GetKeyPressed();
 		#if debug
@@ -127,9 +143,16 @@ int main(void) {
 		int prevBoardCount = boardCount;
 		#endif
 		switch (input) {
-			case KEY_UP:
+			case KEY_UP: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				if (activeAnims > 0) break;
+
+				Pos mergings[MAX_MERGES];
+				for (int i = 0; i < MAX_MERGES; ++i) {
+					mergings[i] = (Pos){-1, -1};
+				}
+				int mergeCount = 0;
+
 				for (int i = 1; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
 						int value = tiles[i][j].num;
@@ -139,14 +162,29 @@ int main(void) {
 						int delta = 0;
 						bool willCombine = false;
 						int nextNum = 0;
+						int mergeTilesSeen = 0;
 
 						for (int k = i-1; k >= 0; k--) {
 							int collidedValue = tiles[k][j].num;
+							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							for (int s = 0; s < mergeCount; ++s) {
+								if (mergings[s].x == j && mergings[s].y == k) {
+									mergeAhead = true;
+									mergeTilesSeen++;
+									break;
+								}
+							}
+
+							if (mergeAhead) {
+								if (mergeTilesSeen % 2 == 1) delta++;
+								continue;
+							}
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
@@ -154,6 +192,10 @@ int main(void) {
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
+								mergings[mergeCount] = (Pos){j, k};
+								mergeCount++;
+								mergings[mergeCount] = (Pos){j, i};
+								mergeCount++;
 							}
 						}
 
@@ -174,9 +216,17 @@ int main(void) {
 					}
 				}
 				break;
-			case KEY_DOWN:
+			}
+			case KEY_DOWN: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				if (activeAnims > 0) break;
+
+				Pos mergings[MAX_MERGES];
+				for (int i = 0; i < MAX_MERGES; ++i) {
+					mergings[i] = (Pos){-1, -1};
+				}
+				int mergeCount = 0;
+
 				for (int i = 2; i >= 0; --i) {
 					for (int j = 0; j < 4; ++j) {
 						int value = tiles[i][j].num;
@@ -186,14 +236,29 @@ int main(void) {
 						int delta = 0;
 						bool willCombine = false;
 						int nextNum = 0;
+						int mergeTilesSeen = 0;
 
 						for (int k = i+1; k <= 3; ++k) {
 							int collidedValue = tiles[k][j].num;
+							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							for (int s = 0; s < mergeCount; ++s) {
+								if (mergings[s].x == j && mergings[s].y == k) {
+									mergeAhead = true;
+									mergeTilesSeen++;
+									break;
+								}
+							}
+
+							if (mergeAhead) {
+								if (mergeTilesSeen % 2 == 1) delta++;
+								continue;
+							}
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
@@ -201,6 +266,10 @@ int main(void) {
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
+								mergings[mergeCount] = (Pos){j, k};
+								mergeCount++;
+								mergings[mergeCount] = (Pos){j, i};
+								mergeCount++;
 							}
 						}
 
@@ -221,9 +290,17 @@ int main(void) {
 					}
 				}
 				break;
-			case KEY_LEFT:
+			}
+			case KEY_LEFT: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				if (activeAnims > 0) break;
+
+				Pos mergings[MAX_MERGES];
+				for (int i = 0; i < MAX_MERGES; ++i) {
+					mergings[i] = (Pos){-1, -1};
+				}
+				int mergeCount = 0;
+
 				for (int j = 1; j < 4; ++j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -233,14 +310,29 @@ int main(void) {
 						int delta = 0;
 						bool willCombine = false;
 						int nextNum = 0;
+						int mergeTilesSeen = 0;
 
 						for (int k = j-1; k >= 0; k--) {
 							int collidedValue = tiles[i][k].num;
+							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							for (int s = 0; s < mergeCount; ++s) {
+								if (mergings[s].x == k && mergings[s].y == i) {
+									mergeAhead = true;
+									mergeTilesSeen++;
+									break;
+								}
+							}
+
+							if (mergeAhead) {
+								if (mergeTilesSeen % 2 == 1) delta++;
+								continue;
+							}
 
 							if (nextNum == 0 ) {
 								nextNum = collidedValue;
@@ -248,6 +340,10 @@ int main(void) {
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
+								mergings[mergeCount] = (Pos){k, i};
+								mergeCount++;
+								mergings[mergeCount] = (Pos){j, i};
+								mergeCount++;
 							}
 						}
 
@@ -268,9 +364,17 @@ int main(void) {
 					}
 				}
 				break;
-			case KEY_RIGHT:
+			}
+			case KEY_RIGHT: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
 				if (activeAnims > 0) break;
+
+				Pos mergings[MAX_MERGES];
+				for (int i = 0; i < MAX_MERGES; ++i) {
+					mergings[i] = (Pos){-1, -1};
+				}
+				int mergeCount = 0;
+
 				for (int j = 2; j >= 0; --j) {
 					for (int i = 0; i < 4; ++i) {
 						int value = tiles[i][j].num;
@@ -280,14 +384,29 @@ int main(void) {
 						int delta = 0;
 						bool willCombine = false;
 						int nextNum = 0;
+						int mergeTilesSeen = 0;
 
 						for (int k = j+1; k <= 3; ++k) {
 							int collidedValue = tiles[i][k].num;
+							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							for (int s = 0; s < mergeCount; ++s) {
+								if (mergings[s].x == k && mergings[s].y == i) {
+									mergeAhead = true;
+									mergeTilesSeen++;
+									break;
+								}
+							}
+
+							if (mergeAhead) {
+								if (mergeTilesSeen % 2 == 1) delta++;
+								continue;
+							}
 
 							if (nextNum == 0) {
 								nextNum = collidedValue;
@@ -295,6 +414,10 @@ int main(void) {
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
+								mergings[mergeCount] = (Pos){k, i};
+								mergeCount++;
+								mergings[mergeCount] = (Pos){j, i};
+								mergeCount++;
 							}
 						}
 
@@ -315,6 +438,7 @@ int main(void) {
 					}
 				}
 				break;
+			}
 		}
 
 		updateAnims(tiles, &activeAnims);
@@ -349,6 +473,8 @@ int main(void) {
 			DrawRectangleRounded((Rectangle){boardPos.x, boardPos.y, boardDim, boardDim}, 0.05f, 0, DARKGREEN);
 			float thick = 10;
 			float innerDim = (boardDim - 5 * thick) / 4;
+			float halfDim = 0.5f * innerDim;
+
 			for (int i = 0; i < BHEIGHT; ++i) {
 				for (int j = 0; j < BWIDTH; ++j) {
 					DrawRectangleRounded(
@@ -388,28 +514,35 @@ int main(void) {
 						(Rectangle){
 							boardPos.x + thick
 								+ tileX * (innerDim + thick)
-								+ (1.0f - size) * 0.5f * innerDim,
+								+ (1.0f - size) * halfDim,
 							boardPos.y + thick
 								+ tileY * (innerDim + thick)
-								+ (1.0f - size) * 0.5f * innerDim,
+								+ (1.0f - size) * halfDim,
 							innerDim * size, 
 							innerDim * size
 						},
 						0.05f, 0, numColors[(int)log2(num) - 1]
 					);
 
-					int numLen = digitCount(num);
+					const char *numText = TextFormat("%d", num);
+					int fontHalfWidth = MeasureTextEx(numFont, numText, FONTSIZE, 0).x * 0.5f;
 					if (FloatEquals(size, 1.0f)) {
-						DrawText(TextFormat("%d", num), 
-							boardPos.x + 50 + tileX * (innerDim + thick),
-							boardPos.y + 30 + tileY * (innerDim + thick),
-							80, BLACK);
+						DrawTextEx(numFont, numText, 
+							(Vector2){
+								boardPos.x + halfDim - fontHalfWidth + tileX * (innerDim + thick),
+								boardPos.y + (float)FONTSIZE / 2 + tileY * (innerDim + thick),
+							},
+							FONTSIZE, 0, BLACK);
 					}
 				}
 			}
 			//Draw board
 		EndDrawing();
 	}
+
+	UnloadFont(numFont);
+	CloseWindow();
+
 	return 0;
 }
 
