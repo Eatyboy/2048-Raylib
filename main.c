@@ -8,13 +8,21 @@
 
 #define debug true
 
-#define FONTSIZE 86
+#define TEXT_L 86
+#define TEXT_M 60
+#define TEXT_S 40
 
 #define BWIDTH 4
 #define BHEIGHT 4
 #define MAX_MERGES (BHEIGHT * BWIDTH / 2)
 
 #define ANIMDT (0.1f)
+
+typedef enum GameState {
+	TITLESCREEN,
+	GAMEPLAY,
+	GAMEOVER
+} GameState;
 
 typedef struct Pos {
 	int x;
@@ -32,33 +40,47 @@ typedef struct Tile {
 	Anim *anim;
 } Tile;
 
-void gameOver();
-void restartGame(Tile board[BHEIGHT][BWIDTH], 
-				int newState[BHEIGHT][BWIDTH],
-				int *animCount,
-				bool *spawningTiles);
-void printBoard(Tile tiles[BHEIGHT][BWIDTH]);
-void printTiles(Tile tiles[BHEIGHT][BWIDTH]);
-int generateTile(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount);
+typedef struct BoardState {
+	Tile board[BHEIGHT][BWIDTH];
+	int newState[BHEIGHT][BWIDTH];
+	int animCount;
+	bool spawningTiles;
+} BoardState;
+
+typedef struct Button {
+	Rectangle rect;
+	float round;
+	Color color;
+	const char* text;
+	void (*fn)(BoardState*);
+} Button;
+
+void restartGame(BoardState *state);
+int generateTile(BoardState *state);
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
 void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
-bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles);
 int digitCount(int n);
+
+#if debug
+bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles);
+void printBoard(Tile tiles[BHEIGHT][BWIDTH]);
+void printTiles(Tile tiles[BHEIGHT][BWIDTH]);
+void printState(int board[BHEIGHT][BWIDTH]);
+int getBoardCount(int tiles[BHEIGHT][BWIDTH]);
+#endif
 
 int main(void) {
 	const Vector2 screenSize = {1280, 720};
 	const char *screenName = "2048";
 	const int targetFPS = 60;
 
-	#if debug
-	int boardCount = 0;
-	#endif
+	GameState gameState = GAMEPLAY;
 
 	InitWindow(screenSize.x, screenSize.y, screenName);
 	SetTargetFPS(targetFPS);
 
-	Font numFont = LoadFontEx("res/AzeretMono-Bold.ttf", FONTSIZE, 0, 250);
+	Font numFont = LoadFontEx("res/AzeretMono-Bold.ttf", TEXT_L, 0, 250);
 
 	Color numColors[] = {
 		(Color){245, 203, 192, 255},
@@ -79,73 +101,98 @@ int main(void) {
 		(Color){26, 26, 26, 255}
 	};
 
-	Tile tiles[BHEIGHT][BWIDTH];
-	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			tiles[i][j] = (Tile){
-				0,
-				NULL
-			};
-		}
-	}
-	int newState[4][4];
-	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			newState[i][j] = 0;
-		}
-	}
-	int activeAnims = 0;
-	bool shouldSpawnTile = false;
-	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			newState[i][j] = (int)powf(2, 4 * i + j);
-		}
-	}
+	BoardState state;
 
-/*
-	#if debug
-	boardCount +=
-	#endif
-	generateTile(tiles, newState, &activeAnims);
-	#if debug
-	boardCount +=
-	#endif
-	generateTile(tiles, newState, &activeAnims);
-*/
+#define TS_BTN_COUNT 1
+	Button titleScreenButtons[TS_BTN_COUNT] = {
+		(Button){
+			(Rectangle){screenSize.x / 2, screenSize.y / 2, 300, 80},
+			0.15,
+			GRAY,
+			"Start",
+			&restartGame
+		}
+	};
+
+#define GO_BTN_COUNT 1
+	Button gameOverButtons[GO_BTN_COUNT] = {
+		(Button){
+			(Rectangle){screenSize.x / 2, screenSize.y / 2, 300, 80},
+			0.15,
+			GRAY,
+			"Restart",
+			&restartGame
+		}
+	};
+
+	restartGame(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
+	generateTile(&state);
 
 	while (!WindowShouldClose()) {
-//		if (isFullBoard(tiles)) gameOver();
+		switch (gameState) {
+
+		case TITLESCREEN:
+		if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+			Vector2 mousePos = GetMousePosition();
+			for (int i = 0; i < TS_BTN_COUNT; ++i) {
+				if (CheckCollisionPointRec(mousePos, titleScreenButtons[i].rect)) {
+					(titleScreenButtons[i].fn)(&state);
+				}
+			}
+		}
+		break;
+
+		case GAMEPLAY:
+		if (isFullBoard(state.board) && state.animCount == 0) gameState = GAMEOVER;
 
 		int input = GetKeyPressed();
 		#if debug
 		if (input == KEY_SPACE) {
-			printBoard(tiles);
+			printBoard(state.board);
 		}
 		if (input == KEY_B) {
-			printTiles(tiles);
+			printTiles(state.board);
 		}
 		if (input == KEY_R) {
-			restartGame(tiles, newState, &activeAnims, &shouldSpawnTile);
+			restartGame(&state);
 			printf("Restarted game\n");
 		}
 		if (input == KEY_I) {
-			printf("Active anims: %d, shouldSpawnTile: %s\n", activeAnims, shouldSpawnTile ? "true" : "false");
-			if (activeAnims > 0) {
+			printf("Active anims: %d, shouldSpawnTile: %s\n", state.animCount, state.spawningTiles ? "true" : "false");
+			if (state.animCount > 0) {
 				for (int i = 0; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
-						Anim *a = tiles[i][j].anim;
+						Anim *a = state.board[i][j].anim;
 						if (a == NULL) printf("Anim at (%d, %d) is null\n", j, i);
 						else printf("Anim at (%d, %d) has dx: %d, dy: %d, t: %f\n", j, i, a->dx, a->dy, a->t);
 					}
 				}
 			}
 		}
-		int prevBoardCount = boardCount;
+		int prevState[BHEIGHT][BWIDTH];
+		for (int i = 0; i < BHEIGHT; ++i) {
+			for (int j = 0; j < BWIDTH; ++j) {
+				prevState[i][j] = state.board[i][j].num;
+			}
+		}
 		#endif
 		switch (input) {
 			case KEY_UP: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
-				if (activeAnims > 0) break;
+				if (state.animCount > 0) break;
 
 				Pos mergings[MAX_MERGES];
 				for (int i = 0; i < MAX_MERGES; ++i) {
@@ -155,7 +202,7 @@ int main(void) {
 
 				for (int i = 1; i < BHEIGHT; ++i) {
 					for (int j = 0; j < BWIDTH; ++j) {
-						int value = tiles[i][j].num;
+						int value = state.board[i][j].num;
 
 						if (value == 0) continue;
 
@@ -165,13 +212,20 @@ int main(void) {
 						int mergeTilesSeen = 0;
 
 						for (int k = i-1; k >= 0; k--) {
-							int collidedValue = tiles[k][j].num;
+							int collidedValue = state.board[k][j].num;
 							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							if (nextNum == 0) {
+								nextNum = collidedValue;
+							} else {
+								nextNum = -1;
+							}
+
 
 							for (int s = 0; s < mergeCount; ++s) {
 								if (mergings[s].x == j && mergings[s].y == k) {
@@ -186,9 +240,6 @@ int main(void) {
 								continue;
 							}
 
-							if (nextNum == 0) {
-								nextNum = collidedValue;
-							} 
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
@@ -200,18 +251,18 @@ int main(void) {
 						}
 
 						if (delta > 0) {
-							newState[i][j] = 0;
-							newState[i - delta][j] = willCombine ? value + value : value;
+							state.newState[i][j] = 0;
+							state.newState[i - delta][j] = willCombine ? value + value : value;
 
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = 0;
 							newAnim->dy = -delta;
 							newAnim->t = 1;
 
-							tiles[i][j].anim = newAnim;
-							activeAnims++;
+							state.board[i][j].anim = newAnim;
+							state.animCount++;
 
-							shouldSpawnTile = true;
+							state.spawningTiles = true;
 						}
 					}
 				}
@@ -219,7 +270,7 @@ int main(void) {
 			}
 			case KEY_DOWN: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
-				if (activeAnims > 0) break;
+				if (state.animCount > 0) break;
 
 				Pos mergings[MAX_MERGES];
 				for (int i = 0; i < MAX_MERGES; ++i) {
@@ -229,7 +280,7 @@ int main(void) {
 
 				for (int i = 2; i >= 0; --i) {
 					for (int j = 0; j < 4; ++j) {
-						int value = tiles[i][j].num;
+						int value = state.board[i][j].num;
 
 						if (value == 0) continue;
 
@@ -239,13 +290,19 @@ int main(void) {
 						int mergeTilesSeen = 0;
 
 						for (int k = i+1; k <= 3; ++k) {
-							int collidedValue = tiles[k][j].num;
+							int collidedValue = state.board[k][j].num;
 							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							if (nextNum == 0) {
+								nextNum = collidedValue;
+							} else {
+								nextNum = -1;
+							}
 
 							for (int s = 0; s < mergeCount; ++s) {
 								if (mergings[s].x == j && mergings[s].y == k) {
@@ -260,9 +317,6 @@ int main(void) {
 								continue;
 							}
 
-							if (nextNum == 0) {
-								nextNum = collidedValue;
-							} 
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
@@ -274,18 +328,18 @@ int main(void) {
 						}
 
 						if (delta > 0) {
-							newState[i][j] = 0;
-							newState[i + delta][j] = willCombine ? value + value : value;
+							state.newState[i][j] = 0;
+							state.newState[i + delta][j] = willCombine ? value + value : value;
 
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = 0;
 							newAnim->dy = delta;
 							newAnim->t = 1;
 
-							tiles[i][j].anim = newAnim;
-							activeAnims++;
+							state.board[i][j].anim = newAnim;
+							state.animCount++;
 
-							shouldSpawnTile = true;
+							state.spawningTiles = true;
 						}
 					}
 				}
@@ -293,7 +347,7 @@ int main(void) {
 			}
 			case KEY_LEFT: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
-				if (activeAnims > 0) break;
+				if (state.animCount > 0) break;
 
 				Pos mergings[MAX_MERGES];
 				for (int i = 0; i < MAX_MERGES; ++i) {
@@ -303,7 +357,7 @@ int main(void) {
 
 				for (int j = 1; j < 4; ++j) {
 					for (int i = 0; i < 4; ++i) {
-						int value = tiles[i][j].num;
+						int value = state.board[i][j].num;
 
 						if (value == 0) continue;
 
@@ -313,13 +367,20 @@ int main(void) {
 						int mergeTilesSeen = 0;
 
 						for (int k = j-1; k >= 0; k--) {
-							int collidedValue = tiles[i][k].num;
+							int collidedValue = state.board[i][k].num;
 							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							if (nextNum == 0 ) {
+								nextNum = collidedValue;
+							} else {
+								nextNum = -1;
+							}
+
 
 							for (int s = 0; s < mergeCount; ++s) {
 								if (mergings[s].x == k && mergings[s].y == i) {
@@ -334,9 +395,6 @@ int main(void) {
 								continue;
 							}
 
-							if (nextNum == 0 ) {
-								nextNum = collidedValue;
-							} 
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
@@ -348,18 +406,18 @@ int main(void) {
 						}
 
 						if (delta > 0) {
-							newState[i][j] = 0;
-							newState[i][j - delta] = willCombine ? value + value : value;
+							state.newState[i][j] = 0;
+							state.newState[i][j - delta] = willCombine ? value + value : value;
 
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = -delta;
 							newAnim->dy = 0;
 							newAnim->t = 1;
 
-							tiles[i][j].anim = newAnim;
-							activeAnims++;
+							state.board[i][j].anim = newAnim;
+							state.animCount++;
 
-							shouldSpawnTile = true;
+							state.spawningTiles = true;
 						}
 					}
 				}
@@ -367,7 +425,7 @@ int main(void) {
 			}
 			case KEY_RIGHT: {
 				//endAnims(tiles, collisions, &activeAnims, &activeAnims);
-				if (activeAnims > 0) break;
+				if (state.animCount > 0) break;
 
 				Pos mergings[MAX_MERGES];
 				for (int i = 0; i < MAX_MERGES; ++i) {
@@ -377,7 +435,7 @@ int main(void) {
 
 				for (int j = 2; j >= 0; --j) {
 					for (int i = 0; i < 4; ++i) {
-						int value = tiles[i][j].num;
+						int value = state.board[i][j].num;
 
 						if (value == 0) continue;
 
@@ -387,13 +445,20 @@ int main(void) {
 						int mergeTilesSeen = 0;
 
 						for (int k = j+1; k <= 3; ++k) {
-							int collidedValue = tiles[i][k].num;
+							int collidedValue = state.board[i][k].num;
 							bool mergeAhead = false;
 
 							if (collidedValue == 0) {
 								delta++;
 								continue;
 							} 
+
+							if (nextNum == 0) {
+								nextNum = collidedValue;
+							} else {
+								nextNum = -1;
+							}
+
 
 							for (int s = 0; s < mergeCount; ++s) {
 								if (mergings[s].x == k && mergings[s].y == i) {
@@ -408,9 +473,6 @@ int main(void) {
 								continue;
 							}
 
-							if (nextNum == 0) {
-								nextNum = collidedValue;
-							}
 							if (nextNum == value && willCombine == false) {
 								delta++;
 								willCombine = true;
@@ -422,18 +484,18 @@ int main(void) {
 						}
 
 						if (delta > 0) {
-							newState[i][j] = 0;
-							newState[i][j + delta] = willCombine ? value + value : value;
+							state.newState[i][j] = 0;
+							state.newState[i][j + delta] = willCombine ? value + value : value;
 
 							Anim *newAnim = malloc(sizeof(Anim));
 							newAnim->dx = delta;
 							newAnim->dy = 0;
 							newAnim->t = 1;
 
-							tiles[i][j].anim = newAnim;
-							activeAnims++;
+							state.board[i][j].anim = newAnim;
+							state.animCount++;
 
-							shouldSpawnTile = true;
+							state.spawningTiles = true;
 						}
 					}
 				}
@@ -441,31 +503,42 @@ int main(void) {
 			}
 		}
 
-		updateAnims(tiles, &activeAnims);
+		updateAnims(state.board, &(state.animCount));
 
-		if (activeAnims == 0) {
+		if (state.animCount == 0) {
 			for (int i = 0; i < BHEIGHT; ++i) {
 				for (int j = 0; j < BWIDTH; ++j) {
-					tiles[i][j].num = newState[i][j];
+					state.board[i][j].num = state.newState[i][j];
 				}
 			}
 
-			if (shouldSpawnTile) {
-				#if debug
-				boardCount +=
-				#endif
-				generateTile(tiles, newState, &activeAnims);
-				shouldSpawnTile = false;
+			if (state.spawningTiles) {
+				generateTile(&state);
 			}
 		}
+		break;
 
-		#if debug
-		if (prevBoardCount > boardCount) {
-			printf("ERROR: board decreased in count\n");
+		case GAMEOVER:
+		if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+			Vector2 mousePos = GetMousePosition();
+			for (int i = 0; i < GO_BTN_COUNT; ++i) {
+				if (CheckCollisionPointRec(mousePos, gameOverButtons[i].rect)) {
+					(gameOverButtons[i].fn)(&state);
+				}
+			}
 		}
-		#endif
+		break;
+
+		default: printf("ERROR: invalid game state\n");
+		}
 
 		BeginDrawing();
+			if (gameState == TITLESCREEN) {
+				for (int i = 0; i < TS_BTN_COUNT; ++i) {
+					Button button = titleScreenButtons[i];
+					DrawRectangleRounded(button.rect, button.round, 0, button.color);
+				}
+			} else if (gameState == GAMEPLAY || gameState == GAMEOVER) {
 			ClearBackground(RAYWHITE);
 			//Draw Board background
 			float boardDim = fminf(screenSize.x*0.8f, screenSize.y*0.8f);
@@ -492,7 +565,7 @@ int main(void) {
 			// Draw tiles
 			for (int i = 0; i < BHEIGHT; ++i) {
 				for (int j = 0; j < BWIDTH; ++j) {
-					Tile tile = tiles[i][j];
+					Tile tile = state.board[i][j];
 					int num = tile.num;
 
 					if (num == 0) continue;
@@ -524,19 +597,37 @@ int main(void) {
 						0.05f, 0, numColors[(int)log2(num) - 1]
 					);
 
+					int textSize = TEXT_L;
 					const char *numText = TextFormat("%d", num);
-					int fontHalfWidth = MeasureTextEx(numFont, numText, FONTSIZE, 0).x * 0.5f;
+					Vector2 fontHalfDim = Vector2Scale(MeasureTextEx(numFont, numText, TEXT_L, 0), 0.5f);
+					if (fontHalfDim.x * 2 > innerDim - thick) {
+						textSize = TEXT_M;
+						fontHalfDim = Vector2Scale(MeasureTextEx(numFont, numText, TEXT_M, 0), 0.5f);
+					}
+					if (fontHalfDim.x * 2 > innerDim - thick) {
+						textSize = TEXT_S;
+						fontHalfDim = Vector2Scale(MeasureTextEx(numFont, numText, TEXT_S, 0), 0.5f);
+					}
 					if (FloatEquals(size, 1.0f)) {
 						DrawTextEx(numFont, numText, 
 							(Vector2){
-								boardPos.x + halfDim - fontHalfWidth + tileX * (innerDim + thick),
-								boardPos.y + (float)FONTSIZE / 2 + tileY * (innerDim + thick),
+								boardPos.x + thick + halfDim - fontHalfDim.x + tileX * (innerDim + thick),
+								boardPos.y + thick + halfDim - fontHalfDim.y + tileY * (innerDim + thick),
 							},
-							FONTSIZE, 0, BLACK);
+							textSize, 0, BLACK);
 					}
 				}
 			}
-			//Draw board
+			}
+
+			if (gameState == GAMEOVER) {
+				DrawRectangleV(Vector2Zero(), screenSize, (Color){0, 0, 0, 100});
+				for (int i = 0; i < GO_BTN_COUNT; ++i) {
+					Button button = gameOverButtons[i];
+					DrawRectangleRounded(button.rect, button.round, 0, button.color);
+					DrawTextEx(numFont, button.text, (Vector2){button.rect.x, button.rect.y}, 40, 0, WHITE);
+				}
+			}
 		EndDrawing();
 	}
 
@@ -546,48 +637,26 @@ int main(void) {
 	return 0;
 }
 
-int generateTile(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount) {
+int generateTile(BoardState *state) {
 	int possibleNums[] = {2,4};
 	int newIndex;
 	do {
 		newIndex = GetRandomValue(0, 15);
-	} while (tiles[newIndex % BHEIGHT][newIndex / BWIDTH].num != 0);
+	} while (state->board[newIndex % BHEIGHT][newIndex / BWIDTH].num != 0);
 
 	int newNum = possibleNums[GetRandomValue(0,1)];
 	Anim *newAnim = malloc(sizeof(Anim));
 	newAnim->dx = 0;
 	newAnim->dy = 0;
 	newAnim->t = 1;
-	tiles[newIndex % BHEIGHT][newIndex / BWIDTH].anim = newAnim;
-	tiles[newIndex % BHEIGHT][newIndex / BWIDTH].num = newNum;
-	newState[newIndex % BHEIGHT][newIndex / BWIDTH] = newNum;
-	(*animCount)++;
+	state->board[newIndex % BHEIGHT][newIndex / BWIDTH].anim = newAnim;
+	state->board[newIndex % BHEIGHT][newIndex / BWIDTH].num = newNum;
+	state->newState[newIndex % BHEIGHT][newIndex / BWIDTH] = newNum;
+	state->animCount++;
+
+	state->spawningTiles = false;
 
 	return newNum;
-}
-
-void printBoard(Tile tiles[BHEIGHT][BWIDTH]) {
-	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			printf("%d ", tiles[i][j].num);
-		}
-		printf("\n");
-	}
-	printf("---------\n");
-}
-
-void printTiles(Tile tiles[BHEIGHT][BWIDTH]) {
-	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			printf("num: %d ", tiles[i][j].num);
-			if (tiles[i][j].anim != NULL) {
-				Anim *a = tiles[i][j].anim;
-				printf("dx: %d, dy: %d, t: %f ", a->dx, a->dy, a->t);
-			}
-		}
-		printf("\n");
-	}
-	printf("-----------------\n");
 }
 
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]) {
@@ -598,11 +667,6 @@ bool isFullBoard(Tile board[BHEIGHT][BWIDTH]) {
 		}
 	}
 	return (fullSpaces == 16);
-}
-
-void gameOver() {
-	printf("you lose");
-	CloseWindow();
 }
 
 void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
@@ -620,20 +684,20 @@ void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 	printf("Active anims after: %d\n", *animCount);
 }
 
-void restartGame(Tile board[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
+void restartGame(BoardState *state) {
 	for (int i = 0; i < BHEIGHT; ++i) {
 		for (int j = 0; j < BWIDTH; ++j) {
-			board[i][j].num = 0;
-			board[i][j].anim = NULL;
-			newState[i][j] = 0;
+			state->board[i][j].num = 0;
+			state->board[i][j].anim = NULL;
+			state->newState[i][j] = 0;
 		}
 	}
 
-	*animCount = 0;
-	*spawningTiles = false;
+	state->animCount = 0;
+	state->spawningTiles = false;
 
-	generateTile(board, newState, animCount);
-	generateTile(board, newState, animCount);
+	generateTile(state);
+	generateTile(state);
 }
 
 void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
@@ -654,10 +718,6 @@ void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount) {
 	}
 }
 
-bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
-	return true;
-}
-
 int digitCount(int n) {
 	int count = 0;
 	while (n > 0) {
@@ -666,3 +726,53 @@ int digitCount(int n) {
 	}
 	return count;
 }
+
+#if debug
+void printBoard(Tile tiles[BHEIGHT][BWIDTH]) {
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			printf("%d ", tiles[i][j].num);
+		}
+		printf("\n");
+	}
+	printf("---------\n");
+}
+
+void printState(int board[BHEIGHT][BWIDTH]) {
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			printf("%d ", board[i][j]);
+		}
+		printf("\n");
+	}
+	printf("---------\n");
+}
+
+void printTiles(Tile tiles[BHEIGHT][BWIDTH]) {
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			printf("num: %d ", tiles[i][j].num);
+			if (tiles[i][j].anim != NULL) {
+				Anim *a = tiles[i][j].anim;
+				printf("dx: %d, dy: %d, t: %f ", a->dx, a->dy, a->t);
+			}
+		}
+		printf("\n");
+	}
+	printf("-----------------\n");
+}
+
+bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles) {
+	return true;
+}
+
+int getBoardCount(int tiles[BHEIGHT][BWIDTH]) {
+	int count = 0;
+	for (int i = 0; i < BHEIGHT; ++i) {
+		for (int j = 0; j < BWIDTH; ++j) {
+			count += tiles[i][j];
+		}
+	}
+	return count;
+}
+#endif
