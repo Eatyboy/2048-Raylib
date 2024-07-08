@@ -12,6 +12,8 @@
 #define TEXT_M 60
 #define TEXT_S 40
 
+#define BTN_DOWN_SCALE (0.85f)
+
 #define BWIDTH 4
 #define BHEIGHT 4
 #define MAX_MERGES (BHEIGHT * BWIDTH / 2)
@@ -52,6 +54,7 @@ typedef struct Button {
 	float round;
 	Color color;
 	const char* text;
+	bool isPressed;
 	void (*fn)(BoardState*);
 } Button;
 
@@ -61,6 +64,7 @@ bool isFullBoard(Tile board[BHEIGHT][BWIDTH]);
 void endAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 void updateAnims(Tile tiles[BHEIGHT][BWIDTH], int *animCount);
 int digitCount(int n);
+void drawButton(Button btn, Font font);
 
 #if debug
 bool runTests(Tile tiles[BHEIGHT][BWIDTH], int newState[BHEIGHT][BWIDTH], int *animCount, bool *spawningTiles);
@@ -107,9 +111,10 @@ int main(void) {
 	Button titleScreenButtons[TS_BTN_COUNT] = {
 		(Button){
 			(Rectangle){screenSize.x / 2, screenSize.y / 2, 300, 80},
-			0.15,
+			0.2,
 			GRAY,
 			"Start",
+			false,
 			&restartGame
 		}
 	};
@@ -117,10 +122,11 @@ int main(void) {
 #define GO_BTN_COUNT 1
 	Button gameOverButtons[GO_BTN_COUNT] = {
 		(Button){
-			(Rectangle){screenSize.x / 2, screenSize.y / 2, 300, 80},
-			0.15,
+			(Rectangle){screenSize.x / 2 - 150, screenSize.y / 2 - 80, 300, 80},
+			0.2,
 			GRAY,
 			"Restart",
+			false,
 			&restartGame
 		}
 	};
@@ -519,10 +525,16 @@ int main(void) {
 		break;
 
 		case GAMEOVER:
-		if (IsMouseButtonDown(MOUSE_BUTTON_LEFT)) {
+		if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+			for (int i = 0; i < GO_BTN_COUNT; ++i) {
+				gameOverButtons[i].isPressed = false;
+			}
+		}
+		if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
 			Vector2 mousePos = GetMousePosition();
 			for (int i = 0; i < GO_BTN_COUNT; ++i) {
 				if (CheckCollisionPointRec(mousePos, gameOverButtons[i].rect)) {
+					gameOverButtons[i].isPressed = true;
 					(gameOverButtons[i].fn)(&state);
 				}
 			}
@@ -623,9 +635,7 @@ int main(void) {
 			if (gameState == GAMEOVER) {
 				DrawRectangleV(Vector2Zero(), screenSize, (Color){0, 0, 0, 100});
 				for (int i = 0; i < GO_BTN_COUNT; ++i) {
-					Button button = gameOverButtons[i];
-					DrawRectangleRounded(button.rect, button.round, 0, button.color);
-					DrawTextEx(numFont, button.text, (Vector2){button.rect.x, button.rect.y}, 40, 0, WHITE);
+					drawButton(gameOverButtons[i], numFont);
 				}
 			}
 		EndDrawing();
@@ -725,6 +735,32 @@ int digitCount(int n) {
 		count++;
 	}
 	return count;
+}
+
+void drawButton(Button btn, Font font) {
+	Rectangle rec = btn.rect;
+	bool btnDown = btn.isPressed;
+	float sizeDiffMult = (1 - BTN_DOWN_SCALE) / 2;
+
+	float btnX = rec.x; 
+	float btnY = rec.y;
+	float btnWidth = rec.width; 
+	float btnHeight = rec.height;
+	float fontSize = TEXT_M;
+	if (btnDown) {
+		btnX += rec.width * sizeDiffMult;
+		btnY += rec.height * sizeDiffMult;
+		btnWidth *= BTN_DOWN_SCALE;
+		btnHeight *= BTN_DOWN_SCALE;
+		fontSize *= BTN_DOWN_SCALE;
+	}
+	Vector2 textDim = MeasureTextEx(font, btn.text, fontSize, 0);
+	float txtX = btnX + btnWidth / 2 - textDim.x / 2;
+	float txtY = btnY + btnHeight / 2 - textDim.y / 2;
+
+	DrawRectangleRoundedLines((Rectangle){btnX, btnY, btnWidth, btnHeight}, btn.round, 0, 3, BLACK);
+	DrawRectangleRounded((Rectangle){btnX, btnY, btnWidth, btnHeight}, btn.round, 0, btn.color);
+	DrawTextEx(font, btn.text, (Vector2){txtX, txtY}, fontSize, 0, WHITE);
 }
 
 #if debug
