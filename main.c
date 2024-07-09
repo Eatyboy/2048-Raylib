@@ -6,11 +6,13 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define debug true
+#define debug false
 
 #define TEXT_L 86
 #define TEXT_M 60
 #define TEXT_S 40
+
+#define CRIMSON (Color){165, 28, 48, 255}
 
 #define BTN_DOWN_SCALE (0.85f)
 #define BTN_HOVER_LIGHTEN (0.15f)
@@ -44,6 +46,7 @@ typedef struct Tile {
 } Tile;
 
 typedef struct BoardState {
+	int score;
 	Tile board[BHEIGHT][BWIDTH];
 	int newState[BHEIGHT][BWIDTH];
 	int animCount;
@@ -90,6 +93,8 @@ int main(void) {
 	SetTargetFPS(targetFPS);
 
 	Font numFont = LoadFontEx("res/AzeretMono-Bold.ttf", TEXT_L, 0, 250);
+	Image icon = LoadImage("res/2048logo.png");
+	SetWindowIcon(icon);
 
 	Color numColors[] = {
 		(Color){245, 203, 192, 255},
@@ -517,7 +522,7 @@ int main(void) {
 
 		BeginDrawing();
 			if (gameState == TITLESCREEN) {
-				ClearBackground(ORANGE);
+				ClearBackground(CRIMSON);
 				Rectangle titleParent = (Rectangle){0, 0, screenSize.x, screenSize.y / 3};
 				drawCenteredText("2048", titleParent, 200, numFont, WHITE, 2);
 				Rectangle creatorNameParent = (Rectangle){0, screenSize.y * 9/10, screenSize.x, screenSize.y};
@@ -677,6 +682,7 @@ void restartGame(BoardState *state, GameState *gameState) {
 		}
 	}
 
+	state->score = 0;
 	state->animCount = 0;
 	state->spawningTiles = false;
 
