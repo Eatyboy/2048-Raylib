@@ -23,6 +23,8 @@
 
 #define ANIMDT (0.1f)
 
+#define SCORE_MULT 5
+
 typedef enum GameState {
 	TITLESCREEN,
 	GAMEPLAY,
@@ -248,6 +250,7 @@ int main(void) {
 							if (delta > 0) {
 								state.newState[i][j] = 0;
 								state.newState[i - delta][j] = willCombine ? value + value : value;
+								if (willCombine) state.score += value * SCORE_MULT;
 
 								Anim *newAnim = malloc(sizeof(Anim));
 								newAnim->dx = 0;
@@ -325,6 +328,7 @@ int main(void) {
 							if (delta > 0) {
 								state.newState[i][j] = 0;
 								state.newState[i + delta][j] = willCombine ? value + value : value;
+								if (willCombine) state.score += value * SCORE_MULT;
 
 								Anim *newAnim = malloc(sizeof(Anim));
 								newAnim->dx = 0;
@@ -403,6 +407,7 @@ int main(void) {
 							if (delta > 0) {
 								state.newState[i][j] = 0;
 								state.newState[i][j - delta] = willCombine ? value + value : value;
+								if (willCombine) state.score += value * SCORE_MULT;
 
 								Anim *newAnim = malloc(sizeof(Anim));
 								newAnim->dx = -delta;
@@ -481,6 +486,7 @@ int main(void) {
 							if (delta > 0) {
 								state.newState[i][j] = 0;
 								state.newState[i][j + delta] = willCombine ? value + value : value;
+								if (willCombine) state.score += value * SCORE_MULT;
 
 								Anim *newAnim = malloc(sizeof(Anim));
 								newAnim->dx = delta;
@@ -535,7 +541,7 @@ int main(void) {
 				ClearBackground(RAYWHITE);
 				//Draw Board background
 				float boardDim = fminf(screenSize.x*0.8f, screenSize.y*0.8f);
-				Vector2 boardPos = (Vector2){screenSize.x / 2 - boardDim / 2, screenSize.y / 2 - boardDim / 2};
+				Vector2 boardPos = (Vector2){screenSize.x / 2 - boardDim / 2, screenSize.y - boardDim - 20};
 				DrawRectangleRounded((Rectangle){boardPos.x, boardPos.y, boardDim, boardDim}, 0.05f, 0, DARKGREEN);
 				float thick = 10;
 				float innerDim = (boardDim - 5 * thick) / 4;
@@ -611,6 +617,9 @@ int main(void) {
 						}
 					}
 				}
+				drawCenteredText(TextFormat("Score:%d", state.score), 
+					 (Rectangle){0, 0, screenSize.x, boardPos.y}, 
+					 TEXT_M, numFont, BLACK, 1);
 			}
 
 			if (gameState == GAMEOVER) {
