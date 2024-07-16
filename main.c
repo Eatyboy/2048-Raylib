@@ -531,7 +531,7 @@ int main(void) {
 				ClearBackground(CRIMSON);
 				Rectangle titleParent = (Rectangle){0, 0, screenSize.x, screenSize.y / 3};
 				drawCenteredText("2048", titleParent, 200, numFont, WHITE, 2);
-				Rectangle creatorNameParent = (Rectangle){0, screenSize.y * 9/10, screenSize.x, screenSize.y};
+				Rectangle creatorNameParent = (Rectangle){0, screenSize.y * 9/10, screenSize.x, screenSize.y / 10};
 				drawCenteredText("made by Ethan Carter", creatorNameParent, TEXT_S, numFont, WHITE, 0);
 
 				for (int i = 0; i < TS_BTN_COUNT; ++i) {
