@@ -23,7 +23,7 @@
 
 #define ANIMDT (0.1f)
 
-#define SCORE_MULT 5
+#define SCORE_MULT 2
 
 typedef enum GameState {
 	TITLESCREEN,
@@ -135,7 +135,7 @@ int main(void) {
 #define GO_BTN_COUNT 1
 	Button gameOverButtons[GO_BTN_COUNT] = {
 		(Button){
-			(Rectangle){screenSize.x / 2 - 150, screenSize.y / 2 - 80, 300, 80},
+			(Rectangle){screenSize.x / 2 - 150, screenSize.y / 2 + 40, 300, 80},
 			0.2,
 			GRAY,
 			"Restart",
@@ -624,6 +624,13 @@ int main(void) {
 
 			if (gameState == GAMEOVER) {
 				DrawRectangleV(Vector2Zero(), screenSize, (Color){0, 0, 0, 100});
+
+				drawCenteredText("Game Over", 
+					 (Rectangle){0, 0, screenSize.x, screenSize.y * 9 / 20}, 
+					 200, numFont, WHITE, 0);
+				drawCenteredText(TextFormat("Your score was: %d", state.score), 
+					 (Rectangle){0, screenSize.y * 8 / 20, screenSize.x, screenSize.y * 2 / 20}, 
+					 TEXT_M, numFont, WHITE, 0);
 				for (int i = 0; i < GO_BTN_COUNT; ++i) {
 					drawButton(gameOverButtons[i], numFont);
 				}
@@ -660,13 +667,34 @@ int generateTile(BoardState *state) {
 }
 
 bool isFullBoard(Tile board[BHEIGHT][BWIDTH]) {
-	int fullSpaces = 0;
 	for (int i = 0; i < BHEIGHT; ++i) {
-		for (int j = 0; j < BWIDTH; ++j) {
-			if (board[i][j].num != 0) fullSpaces++;
+		for (int j = i % 2; j < BWIDTH; j += 2) {
+			int num = board[i][j].num;
+			if (num == 0) return false;
+
+			if (i > 0) {
+				if (board[i-1][j].num == 0 
+					|| board[i-1][j].num == num) 
+					return false;
+			}
+			if (i < 3) {
+				if (board[i+1][j].num == 0 
+					|| board[i+1][j].num == num) 
+					return false;
+			}
+			if (j > 0) {
+				if (board[i-1][j].num == 0 
+					|| board[i][j-1].num == num) 
+					return false;
+			}
+			if (j < 3) {
+				if (board[i][j+1].num == 0 
+					|| board[i][j+1].num == num) 
+					return false;
+			}
 		}
 	}
-	return (fullSpaces == 16);
+	return true;
 }
 
 void endAnims(BoardState *state) {
