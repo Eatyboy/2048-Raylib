@@ -542,7 +542,7 @@ int main(void) {
 				//Draw Board background
 				float boardDim = fminf(screenSize.x*0.8f, screenSize.y*0.8f);
 				Vector2 boardPos = (Vector2){screenSize.x / 2 - boardDim / 2, screenSize.y - boardDim - 20};
-				DrawRectangleRounded((Rectangle){boardPos.x, boardPos.y, boardDim, boardDim}, 0.05f, 0, DARKGREEN);
+				DrawRectangleRounded((Rectangle){boardPos.x, boardPos.y, boardDim, boardDim}, 0.05f, 0, BROWN);
 				float thick = 10;
 				float innerDim = (boardDim - 5 * thick) / 4;
 				float halfDim = 0.5f * innerDim;
@@ -556,7 +556,7 @@ int main(void) {
 								innerDim, 
 								innerDim
 							},
-							0.05f, 0, GREEN
+							0.05f, 0, BEIGE
 						);
 					}
 				}
